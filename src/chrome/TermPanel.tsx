@@ -5,6 +5,10 @@ function step(index: number): CSSProperties {
 }
 import type { Term, TermPlace } from "../dictionary/catalog";
 import { definitionBody, parseInline, parseMarkdown, type Block, type Inline } from "../dictionary/prose";
+import { panelCopy, sectionZh, type Lang } from "../locale/copy";
+import { zhDefinition } from "../locale/definitions";
+import { zhLede, zhUsage } from "../locale/surface";
+import { officialZh } from "../locale/official";
 import { RollingLabel } from "./RollingLabel";
 
 interface TermPanelProps {
@@ -16,6 +20,7 @@ interface TermPanelProps {
   onOpen: (slug: string) => void;
   onClose: () => void;
   placeFor: (slug: string) => TermPlace | undefined;
+  lang: Lang;
 }
 
 export function TermPanel({
@@ -27,11 +32,12 @@ export function TermPanel({
   onOpen,
   onClose,
   placeFor,
+  lang,
 }: TermPanelProps) {
   const { exit, motion } = usePanelMotion(term, place.index);
   return (
-    <aside className="panel" data-open={open} aria-label={term.title}>
-      <button className="panel-close" type="button" aria-label="Close" onClick={onClose}>
+    <aside className="panel" data-open={open} data-lang={lang} aria-label={term.title}>
+      <button className="panel-close" type="button" aria-label={panelCopy(lang).close} onClick={onClose}>
         <span className="panel-close-mark" />
       </button>
       <div className="panel-stage">
@@ -43,6 +49,7 @@ export function TermPanel({
             linkTarget={linkTarget}
             titleFor={titleFor}
             onOpen={onOpen}
+            lang={lang}
           />
         </div>
       ) : null}
@@ -53,6 +60,7 @@ export function TermPanel({
         linkTarget={linkTarget}
         titleFor={titleFor}
         onOpen={onOpen}
+        lang={lang}
       />
       </div>
       </div>
@@ -93,41 +101,49 @@ function PanelDocument({
   linkTarget,
   titleFor,
   onOpen,
+  lang,
 }: {
   term: Term;
   place: TermPlace;
   linkTarget: (href: string) => string | null;
   titleFor: (slug: string) => string;
   onOpen: (slug: string) => void;
+  lang: Lang;
 }) {
-  const blocks = parseMarkdown(definitionBody(term.body), linkTarget);
-  const prevTitle = place.prev ? titleFor(place.prev) : null;
-  const nextTitle = place.next ? titleFor(place.next) : null;
+  const copy = panelCopy(lang);
+  const gloss = lang === "zh" ? officialZh(term.slug) : undefined;
+  const lede = lang === "zh" && zhLede[term.slug] ? zhLede[term.slug] : term.description;
+  const usage = lang === "zh" && zhUsage[term.slug] ? zhUsage[term.slug] : term.usage;
+  const body = lang === "zh" && zhDefinition[term.slug] ? zhDefinition[term.slug] : definitionBody(term.body);
+  const blocks = parseMarkdown(body, linkTarget);
+  const prevTitle = place.prev ? linkedTitle(place.prev, titleFor, lang) : null;
+  const nextTitle = place.next ? linkedTitle(place.next, titleFor, lang) : null;
   return (
     <>
       <PanelScroll>
         <header className="panel-meta reveal" style={step(0)}>
-          <span className="panel-section">{place.sectionTitle}</span>
+          <span className="panel-section">{lang === "zh" ? sectionZh[place.sectionTitle] ?? place.sectionTitle : place.sectionTitle}</span>
           <span className="panel-index">
             <em>{String(place.index).padStart(2, "0")}</em>
             <span>/ {String(place.total).padStart(2, "0")}</span>
           </span>
         </header>
         <span className="rule" style={step(1)} />
+        {gloss ? <p className="term-gloss">{gloss}</p> : null}
         <h2><span className="panel-title">{term.title}</span></h2>
-        <p className="lede reveal" style={step(2)}>{term.description}</p>
+        <p className={lang === "zh" ? "lede lede-zh reveal" : "lede reveal"} style={step(2)}>{lede}</p>
         <section className="reveal" style={step(3)}>
           <span className="rule" style={step(3)} />
-          <h3>Full definition</h3>
-          <Definition key={term.slug} blocks={blocks} onOpen={onOpen} />
+          <h3>{copy.full}</h3>
+          <Definition key={`${term.slug}:${lang}`} blocks={blocks} onOpen={onOpen} copy={copy} zh={lang === "zh"} />
         </section>
-        {term.usage.length > 0 ? (
+        {usage.length > 0 ? (
           <section className="reveal" style={step(4)}>
             <span className="rule" style={step(4)} />
-            <h3>Heard in the wild</h3>
-            <ul className="usage">
-              {term.usage.map((line, index) => (
-                <li key={line} data-role={index === term.usage.length - 1 ? "a" : "q"}>
+            <h3>{copy.heard}</h3>
+            <ul className={lang === "zh" ? "usage usage-zh" : "usage"}>
+              {usage.map((line, index) => (
+                <li key={line} data-role={index === usage.length - 1 ? "a" : "q"}>
                   <Inlines parts={parseInline(line, linkTarget)} onOpen={onOpen} />
                 </li>
               ))}
@@ -137,7 +153,7 @@ function PanelDocument({
         {term.avoid ? (
           <section className="reveal" style={step(5)}>
             <span className="rule" style={step(5)} />
-            <h3>Avoid</h3>
+            <h3>{copy.avoid}</h3>
             <p className="avoid">
               <Inlines parts={parseInline(term.avoid, linkTarget)} onOpen={onOpen} />
             </p>
@@ -146,11 +162,11 @@ function PanelDocument({
         {term.links.length > 0 ? (
           <section className="reveal" style={step(6)}>
             <span className="rule" style={step(6)} />
-            <h3>Connects to</h3>
+            <h3>{copy.connects}</h3>
             <div className="chips">
               {term.links.map((slug) => (
                 <button key={slug} className="chip" type="button" onClick={() => onOpen(slug)}>
-                  <RollingLabel text={titleFor(slug)} />
+                  <RollingLabel text={linkedTitle(slug, titleFor, lang)} />
                 </button>
               ))}
             </div>
@@ -159,22 +175,22 @@ function PanelDocument({
         <span className="rule entry-rule" />
         <div className="entry-actions reveal" style={step(7)}>
           <a className="entry-cta" href={entryHref(term.slug)} target="_blank" rel="noopener noreferrer">
-            <RollingLabel text="Read full entry" />
+            <RollingLabel text={copy.entry} />
             <ExternalIcon />
           </a>
           <button className="entry-share" type="button" onClick={() => shareTerm(term)}>
-            <RollingLabel text="Share" />
+            <RollingLabel text={copy.share} />
             <ShareIcon />
           </button>
           <button className="entry-share" type="button" onClick={() => copyTerm(term)}>
-            <RollingLabel text="Copy markdown" />
+            <RollingLabel text={copy.markdown} />
             <CopyIcon />
           </button>
         </div>
       </PanelScroll>
       <nav className="pager reveal" style={step(2)} aria-label="Adjacent terms">
-        <PagerButton dir="prev" label="Prev" title={prevTitle} disabled={!place.prev} onClick={() => place.prev && onOpen(place.prev)} />
-        <PagerButton dir="next" label="Next" title={nextTitle} disabled={!place.next} onClick={() => place.next && onOpen(place.next)} />
+        <PagerButton dir="prev" label={copy.prev} title={prevTitle} disabled={!place.prev} onClick={() => place.prev && onOpen(place.prev)} />
+        <PagerButton dir="next" label={copy.next} title={nextTitle} disabled={!place.next} onClick={() => place.next && onOpen(place.next)} />
       </nav>
     </>
   );
@@ -241,12 +257,29 @@ function PanelScroll({ children }: { children: ReactNode }) {
   );
 }
 
-function Definition({ blocks, onOpen }: { blocks: Block[]; onOpen: (slug: string) => void }) {
+function linkedTitle(slug: string, titleFor: (slug: string) => string, lang: Lang) {
+  const english = titleFor(slug);
+  if (lang !== "zh") return english;
+  const zh = officialZh(slug);
+  return zh ? `${zh} · ${english}` : english;
+}
+
+function Definition({
+  blocks,
+  onOpen,
+  copy,
+  zh,
+}: {
+  blocks: Block[];
+  onOpen: (slug: string) => void;
+  copy: ReturnType<typeof panelCopy>;
+  zh: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const collapsed = blocks.length > 1 && !open;
   const shown = collapsed ? blocks.slice(0, 1) : blocks;
   return (
-    <div className="prose">
+    <div className={zh ? "prose prose-zh" : "prose"}>
       {shown.map((block, index) => (
         <ProseBlock key={index} block={block} onOpen={onOpen} />
       ))}
@@ -258,7 +291,7 @@ function Definition({ blocks, onOpen }: { blocks: Block[]; onOpen: (slug: string
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
         >
-          {open ? "Show less" : "Read more"}
+          {open ? copy.less : copy.more}
           <svg className="read-more-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M6 9l6 6 6-6" />
           </svg>

@@ -3,6 +3,7 @@ import type { Catalog } from "../dictionary/catalog";
 import type { GraphFrame } from "../graph/project";
 import type { Session } from "../session/store";
 import { useSessionState } from "../session/store";
+import { panelCopy } from "../locale/copy";
 import { Intro } from "./Intro";
 import { SearchField } from "./SearchField";
 import { TermPanel } from "./TermPanel";
@@ -23,6 +24,11 @@ export function Shell({ catalog, session, frame, children }: ShellProps) {
   const [panelOpen, setPanelOpen] = useState(Boolean(term));
   const [stageOpen, setStageOpen] = useState(Boolean(term));
   const place = panelTerm ? catalog.place(panelTerm.slug) : undefined;
+  const copy = panelCopy(state.lang);
+
+  useEffect(() => {
+    document.documentElement.lang = state.lang === "zh" ? "zh-CN" : "en";
+  }, [state.lang]);
 
   useEffect(() => {
     if (term) {
@@ -46,7 +52,7 @@ export function Shell({ catalog, session, frame, children }: ShellProps) {
   }, [session]);
 
   return (
-    <div className="app" data-open={stageOpen ? "true" : "false"}>
+    <div className="app" data-open={stageOpen ? "true" : "false"} data-lang={state.lang}>
       <div className="stage">{children}</div>
       <SearchField query={state.query} count={frame.matched.length} onQuery={session.setQuery} />
       <div className="corner corner-info">
@@ -74,6 +80,17 @@ export function Shell({ catalog, session, frame, children }: ShellProps) {
         <span className="credit-ai">AI</span>Hero.dev
       </a>
       <div className="corner corner-tools">
+        <Tip content={copy.langTip}>
+          <button
+            className="icon-button"
+            type="button"
+            aria-label={copy.langLabel}
+            aria-pressed={state.lang === "zh"}
+            onClick={session.toggleLanguage}
+          >
+            <LanguageIcon />
+          </button>
+        </Tip>
         <Tip content={state.sectionColor ? "Colors off" : "Colors on"}>
           <button
             className="icon-button"
@@ -107,6 +124,7 @@ export function Shell({ catalog, session, frame, children }: ShellProps) {
           onOpen={session.setFocused}
           onClose={() => session.setFocused(null)}
           placeFor={(slug) => catalog.place(slug)}
+          lang={state.lang}
         />
       ) : null}
       <Intro />
@@ -122,6 +140,16 @@ function PaletteIcon() {
       <circle cx="6.5" cy="12.5" r="1.1" />
       <circle cx="13.5" cy="6.5" r="1.1" />
       <circle cx="17.5" cy="10.5" r="1.1" />
+    </svg>
+  );
+}
+
+function LanguageIcon() {
+  return (
+    <svg className="lang-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3.2 12h17.6" />
+      <path d="M12 3c2.4 2.5 3.7 5.5 3.7 9s-1.3 6.5-3.7 9c-2.4-2.5-3.7-5.5-3.7-9s1.3-6.5 3.7-9z" />
     </svg>
   );
 }

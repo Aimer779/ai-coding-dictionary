@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import type { Lang } from "../locale/copy";
 
 export interface SessionState {
   query: string;
@@ -6,6 +7,7 @@ export interface SessionState {
   hovered: string | null;
   sectionColor: boolean;
   sound: boolean;
+  lang: Lang;
 }
 
 export interface Session {
@@ -16,6 +18,7 @@ export interface Session {
   setHovered(slug: string | null): void;
   toggleSectionColor(): void;
   toggleSound(): void;
+  toggleLanguage(): void;
   replace(next: Pick<SessionState, "query" | "focused">): void;
 }
 
@@ -26,6 +29,7 @@ export function createSession(initial: Pick<SessionState, "query" | "focused">):
     hovered: null,
     sectionColor: false,
     sound: true,
+    lang: storedLang(),
   };
   const listeners = new Set<() => void>();
 
@@ -56,11 +60,28 @@ export function createSession(initial: Pick<SessionState, "query" | "focused">):
     toggleSound() {
       emit({ ...state, sound: !state.sound });
     },
+    toggleLanguage() {
+      const lang = state.lang === "zh" ? "en" : "zh";
+      try {
+        window.localStorage.setItem("aicd-lang", lang);
+      } catch {
+        /* private mode */
+      }
+      emit({ ...state, lang });
+    },
     replace(next) {
       if (state.query === next.query && state.focused === next.focused) return;
       emit({ ...state, query: next.query, focused: next.focused, hovered: null });
     },
   };
+}
+
+function storedLang(): Lang {
+  try {
+    return window.localStorage.getItem("aicd-lang") === "en" ? "en" : "zh";
+  } catch {
+    return "zh";
+  }
 }
 
 export function useSessionState(session: Session): SessionState {
