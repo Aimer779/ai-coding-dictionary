@@ -54,6 +54,9 @@ button, input, a { font: inherit; color: inherit; }
   stroke-linejoin: round;
 }
 
+.tool-icon { stroke-width: 1.7; }
+.tool-icon circle { fill: currentColor; stroke: none; }
+
 .icon-button[aria-pressed="true"] {
   background: var(--ink);
   color: var(--panel);
