@@ -4,7 +4,7 @@ import { Shell } from "./chrome/Shell";
 import { catalog } from "./dictionary/load";
 import { layoutGraph, paintGraph } from "./graph/project";
 import { Atlas } from "./scene/Atlas";
-import { sectionColor } from "./scene/palette";
+import { duotoneShadow, NODE_INK, NODE_PAPER, sectionColor } from "./scene/palette";
 import { createSession, useSessionState } from "./session/store";
 import { bindUrl, readUrl } from "./session/url";
 
@@ -17,10 +17,11 @@ export function App() {
     () => paintGraph(catalog, layout, { focused: state.focused, hovered: state.hovered }),
     [layout, state.focused, state.hovered],
   );
-  const tint = useMemo(() => {
-    if (!state.sectionColor || !state.focused) return null;
+  const grade = useMemo(() => {
+    if (!state.sectionColor || !state.focused) return { shadow: NODE_INK, highlight: NODE_PAPER };
     const term = catalog.term(state.focused);
-    return term ? sectionColor(term.section) : null;
+    if (!term) return { shadow: NODE_INK, highlight: NODE_PAPER };
+    return { shadow: duotoneShadow(term.section), highlight: sectionColor(term.section) };
   }, [state.sectionColor, state.focused]);
 
   useEffect(() => bindUrl(session), []);
@@ -36,7 +37,8 @@ export function App() {
         <Atlas
           catalog={catalog}
           frame={frame}
-          tint={tint}
+          shadow={grade.shadow}
+          highlight={grade.highlight}
           framed={Boolean(state.focused)}
           onFocus={session.setFocused}
           onHover={session.setHovered}

@@ -3,6 +3,12 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    dedupe: ["three", "postprocessing"],
+  },
+  optimizeDeps: {
+    exclude: ["postprocessing"],
+  },
   server: {
     port: 5194,
     strictPort: true,

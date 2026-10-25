@@ -1,38 +1,39 @@
 import { CameraControls } from "@react-three/drei";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
+import { EffectComposer } from "@react-three/postprocessing";
 import { useEffect, useRef } from "react";
-import { Vector3, type PerspectiveCamera } from "three";
+import { Vector3 } from "three";
 import type { Catalog } from "../dictionary/catalog";
 import type { GraphFrame } from "../graph/project";
 import { Edges } from "./Edges";
+import { FocusRing } from "./FocusRing";
+import { useGrade } from "./Grade";
 import { Labels } from "./Labels";
 import { Nodes } from "./Nodes";
-import { PAPER } from "./palette";
+import { NODE_PAPER } from "./palette";
 import { Sparks } from "./Sparks";
 
 interface AtlasProps {
   catalog: Catalog;
   frame: GraphFrame;
-  tint: string | null;
+  shadow: string;
+  highlight: string;
   framed: boolean;
   onFocus: (slug: string) => void;
   onHover: (slug: string | null) => void;
 }
 
-const EYE = new Vector3(0.42, 0.22, 0.78);
-const UP = new Vector3(0, 1, 0);
+const HOME = new Vector3(130, 100, 540).normalize();
 const nodePoint = new Vector3();
 const eyePoint = new Vector3();
-const viewPoint = new Vector3();
-const rightPoint = new Vector3();
-const targetPoint = new Vector3();
+const radial = new Vector3();
 
-export function Atlas({ catalog, frame, tint, framed, onFocus, onHover }: AtlasProps) {
+export function Atlas({ catalog, frame, shadow, highlight, framed, onFocus, onHover }: AtlasProps) {
   const controls = useRef<CameraControls>(null);
-  const { size, camera } = useThree();
+  const duotone = useGrade({ shadow, highlight });
   const placed = useRef("");
   const dragging = useRef(false);
-  const background = tint ?? PAPER;
+  const background = NODE_PAPER;
 
   useEffect(() => {
     const camera = controls.current;
@@ -54,22 +55,17 @@ export function Atlas({ catalog, frame, tint, framed, onFocus, onHover }: AtlasP
   useFrame((_, delta) => {
     const rig = controls.current;
     if (!rig) return;
-    const key = `${frame.lookAt[0].toFixed(2)}:${frame.lookAt[1].toFixed(2)}:${frame.lookAt[2].toFixed(2)}:${frame.distance.toFixed(1)}:${framed ? size.width : 0}`;
+    const key = `${frame.lookAt[0].toFixed(2)}:${frame.lookAt[1].toFixed(2)}:${frame.lookAt[2].toFixed(2)}:${frame.distance.toFixed(1)}:${framed ? 1 : 0}`;
     if (key !== placed.current) {
       placed.current = key;
       const [x, y, z] = frame.lookAt;
-      const distance = frame.distance;
       nodePoint.set(x, y, z);
-      eyePoint.copy(EYE).normalize().multiplyScalar(distance).add(nodePoint);
-      targetPoint.copy(nodePoint);
-      if (framed && size.width >= 800) {
-        viewPoint.copy(nodePoint).sub(eyePoint).normalize();
-        rightPoint.crossVectors(viewPoint, UP).normalize();
-        const fov = (camera as PerspectiveCamera).fov;
-        const halfWidth = distance * Math.tan((fov * Math.PI) / 360) * (size.width / size.height);
-        targetPoint.add(rightPoint.multiplyScalar(halfWidth / 3));
-      }
-      void rig.setLookAt(eyePoint.x, eyePoint.y, eyePoint.z, targetPoint.x, targetPoint.y, targetPoint.z, true);
+      radial.copy(nodePoint);
+      if (radial.lengthSq() < 1) radial.copy(HOME);
+      radial.normalize().multiplyScalar(frame.distance);
+      eyePoint.copy(nodePoint).add(radial);
+      rig.smoothTime = framed ? 0.5 : 0.28;
+      void rig.setLookAt(eyePoint.x, eyePoint.y, eyePoint.z, nodePoint.x, nodePoint.y, nodePoint.z, true);
     }
     if (frame.idle && !dragging.current) rig.rotate(0.04 * delta, 0, true);
   });
@@ -84,7 +80,10 @@ export function Atlas({ catalog, frame, tint, framed, onFocus, onHover }: AtlasP
       <CameraControls
         ref={controls}
         makeDefault
-        smoothTime={0.55}
+        smoothTime={0.28}
+        draggingSmoothTime={0.1}
+        azimuthRotateSpeed={0.6}
+        polarRotateSpeed={0.6}
         minDistance={70}
         maxDistance={1200}
         dollyToCursor
@@ -92,7 +91,11 @@ export function Atlas({ catalog, frame, tint, framed, onFocus, onHover }: AtlasP
       <Edges catalog={catalog} frame={frame} />
       <Sparks catalog={catalog} frame={frame} />
       <Nodes catalog={catalog} frame={frame} paper={background} onFocus={onFocus} onHover={onHover} />
+      <FocusRing catalog={catalog} frame={frame} />
       <Labels catalog={catalog} frame={frame} />
+      <EffectComposer multisampling={0}>
+        <primitive object={duotone} />
+      </EffectComposer>
     </>
   );
 }

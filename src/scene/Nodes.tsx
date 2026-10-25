@@ -1,8 +1,9 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
-import { Color, type Mesh, type ShaderMaterial } from "three";
+import { Color, Mesh, Vector2, type ShaderMaterial } from "three";
 import type { Catalog } from "../dictionary/catalog";
 import type { GraphFrame } from "../graph/project";
+import { NODE_ACCENT, NODE_INK } from "./palette";
 
 interface NodesProps {
   catalog: Catalog;
@@ -12,12 +13,22 @@ interface NodesProps {
   onHover: (slug: string | null) => void;
 }
 
-const INK = "#1a1a19";
-const ACCENT = "#0a0a0a";
+const discCenter = new Vector2(0.5, 0.5);
+
+function circleRaycast(this: Mesh, raycaster: Parameters<Mesh["raycast"]>[0], intersects: Parameters<Mesh["raycast"]>[1]) {
+  const start = intersects.length;
+  Mesh.prototype.raycast.call(this, raycaster, intersects);
+  for (let i = intersects.length - 1; i >= start; i -= 1) {
+    const uv = intersects[i].uv;
+    if (!uv || uv.distanceTo(discCenter) > 0.5) intersects.splice(i, 1);
+  }
+}
 
 const vertexShader = `
   varying float vDepth;
+  varying vec2 vUv;
   void main() {
+    vUv = uv;
     vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
     vDepth = -viewPosition.z;
     gl_Position = projectionMatrix * viewPosition;
@@ -35,8 +46,10 @@ const fragmentShader = `
   uniform float uFadeStrength;
   uniform float uFocalDepth;
   varying float vDepth;
+  varying vec2 vUv;
 
   void main() {
+    if (length(vUv - 0.5) > 0.5) discard;
     vec3 col = uInk;
     float hot = clamp(uState - 1.0, 0.0, 1.0);
     col = mix(col, uAccent, hot);
@@ -58,8 +71,8 @@ export function Nodes({ catalog, frame, paper, onFocus, onHover }: NodesProps) {
   const { camera } = useThree();
   const fade = useMemo(
     () => ({
-      uInk: { value: new Color(INK) },
-      uAccent: { value: new Color(ACCENT) },
+      uInk: { value: new Color(NODE_INK) },
+      uAccent: { value: new Color(NODE_ACCENT) },
       uPaper: { value: new Color(paper) },
       uFadeNear: { value: 300 },
       uFadeFar: { value: 560 },
@@ -129,10 +142,12 @@ function NodeMesh({
   const mesh = useRef<Mesh>(null);
   const material = useRef<ShaderMaterial>(null);
   const uniforms = useMemo(() => ({ ...fade, uState: { value: 1 } }), [fade]);
+  const { camera } = useThree();
 
   useFrame((_, delta) => {
     const node = mesh.current;
     if (!node) return;
+    node.quaternion.copy(camera.quaternion);
     const target = frame.visible[index];
     const current = shown[index];
     shown[index] = current + (target - current) * (target > current ? 0.22 : 0.08);
@@ -149,6 +164,7 @@ function NodeMesh({
   return (
     <mesh
       ref={mesh}
+      raycast={circleRaycast}
       onClick={(event) => {
         event.stopPropagation();
         onFocus();
@@ -163,7 +179,7 @@ function NodeMesh({
         onHover(false);
       }}
     >
-      <sphereGeometry args={[radius, 28, 20]} />
+      <planeGeometry args={[radius * 2, radius * 2]} />
       <shaderMaterial ref={material} uniforms={uniforms} vertexShader={vertexShader} fragmentShader={fragmentShader} />
     </mesh>
   );

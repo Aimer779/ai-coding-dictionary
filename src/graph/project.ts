@@ -26,6 +26,7 @@ export interface GraphFrame {
   distance: number;
   idle: boolean;
   active: string | null;
+  hovered: string | null;
   focusIndex: number;
   matched: string[];
 }
@@ -171,6 +172,7 @@ export function paintGraph(catalog: Catalog, layout: GraphLayout, focus: GraphFo
     distance: camera.distance,
     idle: !searching && !focus.focused && !focus.hovered,
     active,
+    hovered: focus.hovered,
     focusIndex: focus.focused ? activeIndex : -1,
     matched: layout.matched,
   };
