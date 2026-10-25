@@ -1,54 +1,129 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+
+function step(index: number): CSSProperties {
+  return { "--i": index } as CSSProperties;
+}
 import type { Term, TermPlace } from "../dictionary/catalog";
 import { definitionBody, parseInline, parseMarkdown, type Block, type Inline } from "../dictionary/prose";
 import { RollingLabel } from "./RollingLabel";
 
 interface TermPanelProps {
+  open: boolean;
   term: Term;
   place: TermPlace;
-  prevTitle: string | null;
-  nextTitle: string | null;
   linkTarget: (href: string) => string | null;
   titleFor: (slug: string) => string;
   onOpen: (slug: string) => void;
   onClose: () => void;
+  placeFor: (slug: string) => TermPlace | undefined;
 }
 
 export function TermPanel({
+  open,
   term,
   place,
-  prevTitle,
-  nextTitle,
   linkTarget,
   titleFor,
   onOpen,
   onClose,
+  placeFor,
 }: TermPanelProps) {
-  const blocks = parseMarkdown(definitionBody(term.body), linkTarget);
+  const { exit, motion } = usePanelMotion(term, place.index);
   return (
-    <aside className="panel" aria-label={term.title}>
+    <aside className="panel" data-open={open} aria-label={term.title}>
       <button className="panel-close" type="button" aria-label="Close" onClick={onClose}>
         <span className="panel-close-mark" />
       </button>
-      <PanelScroll key={term.slug}>
-        <header className="panel-meta">
+      <div className="panel-stage">
+      {exit && placeFor(exit.term.slug) ? (
+        <div className="panel-slide" data-phase="exit" data-mode="browse" style={dirStyle(exit.dir)}>
+          <PanelDocument
+            term={exit.term}
+            place={placeFor(exit.term.slug) as TermPlace}
+            linkTarget={linkTarget}
+            titleFor={titleFor}
+            onOpen={onOpen}
+          />
+        </div>
+      ) : null}
+      <div key={term.slug} className="panel-slide" data-phase="enter" data-mode={motion.mode} style={dirStyle(motion.dir)}>
+      <PanelDocument
+        term={term}
+        place={place}
+        linkTarget={linkTarget}
+        titleFor={titleFor}
+        onOpen={onOpen}
+      />
+      </div>
+      </div>
+    </aside>
+  );
+}
+
+function usePanelMotion(term: Term, index: number) {
+  const current = useRef<{ term: Term; index: number } | null>(null);
+  const [exit, setExit] = useState<{ term: Term; dir: number } | null>(null);
+  const [motion, setMotion] = useState<{ dir: number; mode: "open" | "browse" }>({ dir: 0, mode: "open" });
+
+  useEffect(() => {
+    const previous = current.current;
+    if (previous?.term.slug === term.slug) return;
+    const dir = previous ? (index >= previous.index ? 1 : -1) : 0;
+    const mode = previous ? "browse" : "open";
+    let timer = 0;
+    if (previous) {
+      setExit({ term: previous.term, dir });
+      timer = window.setTimeout(() => setExit(null), 560);
+    }
+    current.current = { term, index };
+    setMotion({ dir, mode });
+    return () => window.clearTimeout(timer);
+  }, [term, index]);
+
+  return { exit, motion };
+}
+
+function dirStyle(dir: number): CSSProperties {
+  return { "--dir": dir } as CSSProperties;
+}
+
+function PanelDocument({
+  term,
+  place,
+  linkTarget,
+  titleFor,
+  onOpen,
+}: {
+  term: Term;
+  place: TermPlace;
+  linkTarget: (href: string) => string | null;
+  titleFor: (slug: string) => string;
+  onOpen: (slug: string) => void;
+}) {
+  const blocks = parseMarkdown(definitionBody(term.body), linkTarget);
+  const prevTitle = place.prev ? titleFor(place.prev) : null;
+  const nextTitle = place.next ? titleFor(place.next) : null;
+  return (
+    <>
+      <PanelScroll>
+        <header className="panel-meta reveal" style={step(0)}>
           <span className="panel-section">{place.sectionTitle}</span>
           <span className="panel-index">
             <em>{String(place.index).padStart(2, "0")}</em>
             <span>/ {String(place.total).padStart(2, "0")}</span>
           </span>
         </header>
-        <span className="rule" />
-        <h2>{term.title}</h2>
-        <p className="lede">{term.description}</p>
-        <section>
-          <span className="rule" />
+        <span className="rule" style={step(1)} />
+        <h2><span className="panel-title">{term.title}</span></h2>
+        <p className="lede reveal" style={step(2)}>{term.description}</p>
+        <section className="reveal" style={step(3)}>
+          <span className="rule" style={step(3)} />
           <h3>Full definition</h3>
           <Definition key={term.slug} blocks={blocks} onOpen={onOpen} />
         </section>
         {term.usage.length > 0 ? (
-          <section>
-            <span className="rule" />
+          <section className="reveal" style={step(4)}>
+            <span className="rule" style={step(4)} />
             <h3>Heard in the wild</h3>
             <ul className="usage">
               {term.usage.map((line, index) => (
@@ -60,8 +135,8 @@ export function TermPanel({
           </section>
         ) : null}
         {term.avoid ? (
-          <section>
-            <span className="rule" />
+          <section className="reveal" style={step(5)}>
+            <span className="rule" style={step(5)} />
             <h3>Avoid</h3>
             <p className="avoid">
               <Inlines parts={parseInline(term.avoid, linkTarget)} onOpen={onOpen} />
@@ -69,8 +144,8 @@ export function TermPanel({
           </section>
         ) : null}
         {term.links.length > 0 ? (
-          <section>
-            <span className="rule" />
+          <section className="reveal" style={step(6)}>
+            <span className="rule" style={step(6)} />
             <h3>Connects to</h3>
             <div className="chips">
               {term.links.map((slug) => (
@@ -82,7 +157,7 @@ export function TermPanel({
           </section>
         ) : null}
         <span className="rule entry-rule" />
-        <div className="entry-actions">
+        <div className="entry-actions reveal" style={step(7)}>
           <a className="entry-cta" href={entryHref(term.slug)} target="_blank" rel="noopener noreferrer">
             <RollingLabel text="Read full entry" />
             <ExternalIcon />
@@ -97,11 +172,11 @@ export function TermPanel({
           </button>
         </div>
       </PanelScroll>
-      <nav className="pager" aria-label="Adjacent terms">
+      <nav className="pager reveal" style={step(2)} aria-label="Adjacent terms">
         <PagerButton dir="prev" label="Prev" title={prevTitle} disabled={!place.prev} onClick={() => place.prev && onOpen(place.prev)} />
         <PagerButton dir="next" label="Next" title={nextTitle} disabled={!place.next} onClick={() => place.next && onOpen(place.next)} />
       </nav>
-    </aside>
+    </>
   );
 }
 

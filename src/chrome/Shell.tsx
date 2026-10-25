@@ -19,7 +19,26 @@ export function Shell({ catalog, session, frame, children }: ShellProps) {
   const [intro, setIntro] = useState(state.query.length === 0 && !state.focused);
   const [about, setAbout] = useState(false);
   const term = state.focused ? catalog.term(state.focused) : undefined;
-  const place = state.focused ? catalog.place(state.focused) : undefined;
+  const [panelTerm, setPanelTerm] = useState(term);
+  const [panelOpen, setPanelOpen] = useState(Boolean(term));
+  const [stageOpen, setStageOpen] = useState(Boolean(term));
+  const place = panelTerm ? catalog.place(panelTerm.slug) : undefined;
+
+  useEffect(() => {
+    if (term) {
+      setPanelTerm(term);
+      setPanelOpen(true);
+      setStageOpen(true);
+      return;
+    }
+    setPanelOpen(false);
+    const release = window.setTimeout(() => setStageOpen(false), 180);
+    const clear = window.setTimeout(() => setPanelTerm(undefined), 420);
+    return () => {
+      window.clearTimeout(release);
+      window.clearTimeout(clear);
+    };
+  }, [term]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setIntro(false), 1600);
@@ -35,7 +54,7 @@ export function Shell({ catalog, session, frame, children }: ShellProps) {
   }, [session]);
 
   return (
-    <div className="app" data-open={term ? "true" : "false"}>
+    <div className="app" data-open={stageOpen ? "true" : "false"}>
       <div className="stage">{children}</div>
       <SearchField query={state.query} count={frame.matched.length} onQuery={session.setQuery} />
       <div className="corner corner-info">
@@ -86,16 +105,16 @@ export function Shell({ catalog, session, frame, children }: ShellProps) {
           </button>
         </Tip>
       </div>
-      {term && place ? (
+      {panelTerm && place ? (
         <TermPanel
-          term={term}
+          open={panelOpen}
+          term={panelTerm}
           place={place}
-          prevTitle={place.prev ? catalog.term(place.prev)?.title ?? null : null}
-          nextTitle={place.next ? catalog.term(place.next)?.title ?? null : null}
           linkTarget={catalog.linkTarget}
           titleFor={(slug) => catalog.term(slug)?.title ?? slug}
           onOpen={session.setFocused}
           onClose={() => session.setFocused(null)}
+          placeFor={(slug) => catalog.place(slug)}
         />
       ) : null}
       {intro ? (
