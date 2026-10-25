@@ -1,11 +1,11 @@
 import { CameraControls } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { EffectComposer } from "@react-three/postprocessing";
 import { useEffect, useRef } from "react";
 import { Vector3 } from "three";
 import type { Catalog } from "../dictionary/catalog";
 import { easeOutExpo, intro } from "../graph/intro";
-import type { GraphFrame } from "../graph/project";
+import { overviewDistance, type GraphFrame } from "../graph/project";
 import { Drift } from "./Drift";
 import { Edges } from "./Edges";
 import { FocusRing } from "./FocusRing";
@@ -41,6 +41,7 @@ interface Sweep {
 
 export function Atlas({ catalog, frame, shadow, highlight, framed, onFocus, onHover }: AtlasProps) {
   const controls = useRef<CameraControls>(null);
+  const size = useThree((state) => state.size);
   const duotone = useGrade({ shadow, highlight });
   const placed = useRef("");
   const placedOnce = useRef(false);
@@ -68,14 +69,16 @@ export function Atlas({ catalog, frame, shadow, highlight, framed, onFocus, onHo
   useFrame((_, delta) => {
     const rig = controls.current;
     if (!rig) return;
-    const key = `${frame.lookAt[0].toFixed(2)}:${frame.lookAt[1].toFixed(2)}:${frame.lookAt[2].toFixed(2)}:${frame.distance.toFixed(1)}:${framed ? 1 : 0}`;
+    const distance =
+      !framed && frame.matched.length === 0 ? overviewDistance(size.width, size.height) : frame.distance;
+    const key = `${frame.lookAt[0].toFixed(2)}:${frame.lookAt[1].toFixed(2)}:${frame.lookAt[2].toFixed(2)}:${distance.toFixed(1)}:${framed ? 1 : 0}`;
     if (key !== placed.current) {
       placed.current = key;
       const [x, y, z] = frame.lookAt;
       nodePoint.set(x, y, z);
       radial.copy(nodePoint);
       if (radial.lengthSq() < 1) radial.copy(HOME);
-      radial.normalize().multiplyScalar(frame.distance);
+      radial.normalize().multiplyScalar(distance);
       eyePoint.copy(nodePoint).add(radial);
       const first = !placedOnce.current;
       placedOnce.current = true;

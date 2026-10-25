@@ -41,6 +41,16 @@ const LINKED_STATE = 1.3;
 const FOCUS_OTHER_STATE = 0.035;
 const HOVER_OTHER_STATE = 0.12;
 const OVERVIEW_DISTANCE = 760;
+const OVERVIEW_HALF_FOV = (50 * Math.PI) / 360;
+
+/** Original overview distance: fit a 230-unit subject, then pull in on desktop (0.85) or phone (0.52). */
+export function overviewDistance(width: number, height: number) {
+  const aspect = width / Math.max(1, height);
+  const angle = Math.atan(aspect * Math.tan(OVERVIEW_HALF_FOV));
+  const fitted = 230 / Math.sin(Math.min(OVERVIEW_HALF_FOV, angle));
+  const clamped = Math.min(1200, Math.max(320, fitted));
+  return clamped * (height >= width ? 0.52 : 0.85);
+}
 const FOCUS_DISTANCE = (radius: number, fromOrigin: number) => {
   const base = Math.min(1100, 230 + 9 * radius);
   return base * (1 - 0.28 * (1 - Math.min(1, fromOrigin / 210)));

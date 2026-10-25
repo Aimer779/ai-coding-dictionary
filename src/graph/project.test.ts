@@ -3,7 +3,7 @@ import { createCatalog } from "../dictionary/catalog";
 import { definitionBody } from "../dictionary/prose";
 import type { DictionaryDocument } from "../dictionary/types";
 import { sampleCurve } from "./curve";
-import { layoutGraph, paintGraph } from "./project";
+import { layoutGraph, overviewDistance, paintGraph } from "./project";
 
 const doc: DictionaryDocument = {
   source: "fixture",
@@ -106,5 +106,12 @@ describe("graph frame", () => {
     const straight = sampleCurve([0, 0, 0], [80, 0, 0], [0, 30, 0], 0, 0.5);
     expect(bent[1]).toBeCloseTo(15);
     expect(straight).toEqual([40, 0, 0]);
+  });
+
+  it("fits the overview closer than a fixed 760 on a landscape screen", () => {
+    const distance = overviewDistance(1440, 900);
+    expect(distance).toBeGreaterThan(320);
+    expect(distance).toBeLessThan(760);
+    expect(overviewDistance(800, 1000)).toBeLessThan(distance);
   });
 });
