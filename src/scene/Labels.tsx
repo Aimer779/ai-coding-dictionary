@@ -10,6 +10,7 @@ interface GraphText {
 }
 import type { Catalog } from "../dictionary/catalog";
 import type { GraphFrame } from "../graph/project";
+import { intro } from "../graph/intro";
 import { live } from "./live";
 import { pickedSlug } from "./pointer";
 
@@ -120,7 +121,8 @@ function GraphLabel({
     let opacity = baseOpacity * depth;
     if (sink) opacity *= 0.05;
     opacity = self ? 1 : opacity + (1 - opacity) * lift.current;
-    opacity *= presence;
+    const born = intro.active ? (intro.scale[index] ?? 0) : 1;
+    opacity *= presence * born;
     label.fillOpacity = opacity;
     label.outlineOpacity = opacity;
     label.color = self ? ACCENT : INK;
@@ -131,7 +133,7 @@ function GraphLabel({
     holder.position.copy(nodePoint).addScaledVector(screenUp, gap).addScaledVector(towardCamera, 8);
     holder.quaternion.copy(camera.quaternion);
     holder.scale.setScalar(sink ? 0.84 + 0.16 * lift.current : 1);
-    holder.visible = presence > 0.02;
+    holder.visible = presence > 0.02 && born > 0.02;
   }, 1);
 
   return (

@@ -4,6 +4,7 @@ import { BufferAttribute, BufferGeometry, Color, ShaderMaterial } from "three";
 import type { Catalog } from "../dictionary/catalog";
 import { sampleCurve } from "../graph/curve";
 import type { GraphFrame } from "../graph/project";
+import { intro } from "../graph/intro";
 import { live } from "./live";
 import { INK } from "./palette";
 
@@ -51,6 +52,7 @@ export function Edges({ catalog, frame }: EdgesProps) {
       const current = shown.current[edgeIndex];
       const next = current + (target - current) * (target > current ? 0.2 : 0.06);
       shown.current[edgeIndex] = next;
+      const veiled = next * (intro.active ? intro.edge : 1);
       const positions = live.positions.length === frame.positions.length ? live.positions : frame.positions;
       const a: [number, number, number] = [
         positions[edge.source * 3],
@@ -78,8 +80,8 @@ export function Edges({ catalog, frame }: EdgesProps) {
           array[offset + 5] = p1[2];
           dirtyPosition = true;
         }
-        colors[offset / 3] = next;
-        colors[offset / 3 + 1] = next;
+        colors[offset / 3] = veiled;
+        colors[offset / 3 + 1] = veiled;
       }
     }
     if (dirtyPosition) position.needsUpdate = true;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createDrift, stepDrift } from "./drift";
+import { easeOutExpo, edgeVeil, introGain } from "./intro";
 
 describe("hover pull", () => {
   it("springs a neighbor toward the active sphere and leaves the others at home", () => {
@@ -11,5 +12,17 @@ describe("hover pull", () => {
     expect(live[3]).toBeLessThan(100);
     expect(Math.abs(live[6])).toBeLessThan(12);
     expect(Math.hypot(live[0], live[1], live[2])).toBeLessThan(12);
+  });
+});
+
+describe("intro reveal", () => {
+  it("keeps a sphere at the origin until its distance delay, then eases it out", () => {
+    expect(introGain(0, 0)).toBe(0);
+    expect(introGain(0.9, 0.9)).toBe(0);
+    expect(introGain(2.4, 0.9)).toBe(1);
+    expect(easeOutExpo(0.5)).toBeCloseTo(1 - 2 ** -5);
+    expect(edgeVeil(0)).toBe(0);
+    expect(edgeVeil(2.4 * 0.45)).toBeCloseTo(0);
+    expect(edgeVeil(2.4)).toBe(1);
   });
 });

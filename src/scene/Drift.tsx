@@ -2,6 +2,7 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import type { Catalog } from "../dictionary/catalog";
 import { createDrift, stepDrift } from "../graph/drift";
+import { intro, markGraphReady } from "../graph/intro";
 import type { GraphFrame } from "../graph/project";
 import { live } from "./live";
 
@@ -15,6 +16,7 @@ export function Drift({ catalog, frame }: { catalog: Catalog; frame: GraphFrame 
   }, [catalog]);
 
   useFrame((_, delta) => {
+    if (intro.active) markGraphReady();
     if (live.positions.length !== frame.positions.length) {
       live.positions = new Float32Array(frame.positions);
     }

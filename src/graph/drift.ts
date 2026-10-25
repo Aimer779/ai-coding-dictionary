@@ -1,3 +1,5 @@
+import { foldIntro } from "./intro";
+
 export function unitHash(n: number) {
   const value = 43758.5453 * Math.sin(127.1 * n + 311.7);
   return value - Math.floor(value);
@@ -78,4 +80,5 @@ export function stepDrift(drift: Drift, home: Float32Array, live: Float32Array, 
       live[slot] = homeAxis + sway + drift.offset[slot];
     }
   }
+  foldIntro(home, live, drift.offset, time);
 }

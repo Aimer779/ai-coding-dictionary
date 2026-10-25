@@ -4,6 +4,7 @@ import { Color, Mesh, Raycaster, Vector2, Vector3, type ShaderMaterial } from "t
 import type { Catalog } from "../dictionary/catalog";
 import type { GraphFrame } from "../graph/project";
 import { NODE_ACCENT, NODE_INK } from "./palette";
+import { intro } from "../graph/intro";
 import { live } from "./live";
 import { pickedSlug } from "./pointer";
 
@@ -199,7 +200,8 @@ function NodeMesh({
     if (material.current) material.current.uniforms.uState.value = eased;
     const positions = live.positions.length === frame.positions.length ? live.positions : frame.positions;
     node.position.set(positions[index * 3], positions[index * 3 + 1], positions[index * 3 + 2]);
-    const presence = shown[index];
+    const born = intro.active ? (intro.scale[index] ?? 0) : 1;
+    const presence = shown[index] * born;
     node.visible = presence > 0.05;
     node.scale.setScalar(Math.max(presence, 0.001));
   });

@@ -4,6 +4,7 @@ import { EffectComposer } from "@react-three/postprocessing";
 import { useEffect, useRef } from "react";
 import { Vector3 } from "three";
 import type { Catalog } from "../dictionary/catalog";
+import { easeOutExpo, intro } from "../graph/intro";
 import type { GraphFrame } from "../graph/project";
 import { Drift } from "./Drift";
 import { Edges } from "./Edges";
@@ -28,12 +29,23 @@ const HOME = new Vector3(130, 100, 540).normalize();
 const nodePoint = new Vector3();
 const eyePoint = new Vector3();
 const radial = new Vector3();
+const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+interface Sweep {
+  active: boolean;
+  azimuth: number;
+  polar: number;
+  start: number;
+  started: boolean;
+}
 
 export function Atlas({ catalog, frame, shadow, highlight, framed, onFocus, onHover }: AtlasProps) {
   const controls = useRef<CameraControls>(null);
   const duotone = useGrade({ shadow, highlight });
   const placed = useRef("");
+  const placedOnce = useRef(false);
   const dragging = useRef(false);
+  const sweep = useRef<Sweep | null>(null);
   const background = NODE_PAPER;
 
   useEffect(() => {
@@ -65,8 +77,32 @@ export function Atlas({ catalog, frame, shadow, highlight, framed, onFocus, onHo
       if (radial.lengthSq() < 1) radial.copy(HOME);
       radial.normalize().multiplyScalar(frame.distance);
       eyePoint.copy(nodePoint).add(radial);
+      const first = !placedOnce.current;
+      placedOnce.current = true;
       rig.smoothTime = framed ? 0.5 : 0.28;
-      void rig.setLookAt(eyePoint.x, eyePoint.y, eyePoint.z, nodePoint.x, nodePoint.y, nodePoint.z, true);
+      void rig.setLookAt(eyePoint.x, eyePoint.y, eyePoint.z, nodePoint.x, nodePoint.y, nodePoint.z, !first);
+      if (first && intro.active && !REDUCED_MOTION) {
+        const azimuth = rig.azimuthAngle;
+        const polar = rig.polarAngle;
+        sweep.current = { active: true, azimuth, polar, start: 0, started: false };
+        rig.rotateTo(azimuth - 6.6, polar + 0.6, false);
+      }
+    }
+    const opening = sweep.current;
+    if (opening?.active) {
+      if (dragging.current) opening.active = false;
+      else if (!intro.revealed) return;
+      else {
+        if (!opening.started) {
+          opening.started = true;
+          opening.start = performance.now();
+        }
+        const amount = Math.min(1, (performance.now() - opening.start) / 4200);
+        const eased = easeOutExpo(amount);
+        rig.rotateTo(opening.azimuth - 6.6 * (1 - eased), opening.polar + 0.6 * (1 - eased), false);
+        if (amount >= 1) opening.active = false;
+        return;
+      }
     }
     if (frame.idle && !dragging.current) rig.rotate(0.04 * delta, 0, true);
   });

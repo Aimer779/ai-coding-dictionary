@@ -3,6 +3,7 @@ import type { Catalog } from "../dictionary/catalog";
 import type { GraphFrame } from "../graph/project";
 import type { Session } from "../session/store";
 import { useSessionState } from "../session/store";
+import { Intro } from "./Intro";
 import { SearchField } from "./SearchField";
 import { TermPanel } from "./TermPanel";
 import { Tip } from "./Tip";
@@ -16,7 +17,6 @@ interface ShellProps {
 
 export function Shell({ catalog, session, frame, children }: ShellProps) {
   const state = useSessionState(session);
-  const [intro, setIntro] = useState(state.query.length === 0 && !state.focused);
   const [about, setAbout] = useState(false);
   const term = state.focused ? catalog.term(state.focused) : undefined;
   const [panelTerm, setPanelTerm] = useState(term);
@@ -32,18 +32,10 @@ export function Shell({ catalog, session, frame, children }: ShellProps) {
       return;
     }
     setPanelOpen(false);
-    const release = window.setTimeout(() => setStageOpen(false), 180);
-    const clear = window.setTimeout(() => setPanelTerm(undefined), 420);
-    return () => {
-      window.clearTimeout(release);
-      window.clearTimeout(clear);
-    };
+    setStageOpen(false);
+    const clear = window.setTimeout(() => setPanelTerm(undefined), 640);
+    return () => window.clearTimeout(clear);
   }, [term]);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setIntro(false), 1600);
-    return () => window.clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -117,16 +109,7 @@ export function Shell({ catalog, session, frame, children }: ShellProps) {
           placeFor={(slug) => catalog.place(slug)}
         />
       ) : null}
-      {intro ? (
-        <div className="intro" aria-hidden="true">
-          <p>Matt Pocock’s</p>
-          <h1>
-            AI Coding
-            <br />
-            Dictionary
-          </h1>
-        </div>
-      ) : null}
+      <Intro />
     </div>
   );
 }
