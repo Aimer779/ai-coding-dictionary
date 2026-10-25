@@ -64,7 +64,7 @@ export function Sparks({ catalog, frame }: SparksProps) {
   });
 
   return (
-    <points geometry={geometry} frustumCulled={false}>
+    <points geometry={geometry} frustumCulled={false} raycast={() => null}>
       <pointsMaterial color="#161615" size={0.85} sizeAttenuation transparent depthWrite={false} opacity={0.9} />
     </points>
   );

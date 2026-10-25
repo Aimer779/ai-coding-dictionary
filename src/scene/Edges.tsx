@@ -86,7 +86,7 @@ export function Edges({ catalog, frame }: EdgesProps) {
   });
 
   return (
-    <lineSegments geometry={geometry} frustumCulled={false}>
+    <lineSegments geometry={geometry} frustumCulled={false} raycast={() => null}>
       <shaderMaterial
         ref={material}
         vertexShader={VERTEX}

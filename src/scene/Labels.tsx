@@ -1,7 +1,7 @@
 import { Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
-import { DoubleSide, type Group } from "three";
+import { DoubleSide, Vector3, type Group, type Object3D } from "three";
 
 interface GraphText {
   fillOpacity: number;
@@ -10,6 +10,7 @@ interface GraphText {
 }
 import type { Catalog } from "../dictionary/catalog";
 import type { GraphFrame } from "../graph/project";
+import { pickedSlug } from "./pointer";
 
 const FONT = "/fonts/mono/JetBrainsMono-Medium.ttf";
 const INK = "#1a1a19";
@@ -20,6 +21,9 @@ const FAR_OFFSET = 200;
 const LABEL_STRENGTH = 0.95;
 const SEARCH_CUT = 0.78;
 const SEARCH_NEAR = 90;
+const nodePoint = new Vector3();
+const screenUp = new Vector3();
+const towardCamera = new Vector3();
 
 function smoothstep(edge0: number, edge1: number, value: number) {
   const span = edge1 - edge0;
@@ -91,13 +95,18 @@ function GraphLabel({
     const label = text.current;
     const holder = group.current;
     if (!label || !holder) return;
+    const blockRay = (object: Object3D) => {
+      object.raycast = () => null;
+    };
+    blockRay(holder);
+    holder.traverse(blockRay);
     const presence = frame.visible[index];
     const x = frame.positions[index * 3];
-    const y = frame.positions[index * 3 + 1] + radius + 3;
+    const y = frame.positions[index * 3 + 1];
     const z = frame.positions[index * 3 + 2];
     const focused = frame.focusIndex >= 0;
     const self = slug === frame.active;
-    const hovering = focused && !self && frame.hovered === slug;
+    const hovering = focused && !self && pickedSlug.current === slug;
     lift.current += ((hovering ? 1 : 0) - lift.current) * (1 - 0.0009 ** delta);
     const sink = focused && !self && !linked;
     const distance = Math.hypot(x - camera.position.x, y - camera.position.y, z - camera.position.z);
@@ -113,11 +122,15 @@ function GraphLabel({
     label.fillOpacity = opacity;
     label.outlineOpacity = opacity;
     label.color = self ? ACCENT : INK;
-    holder.position.set(x, sink ? y - (1 - lift.current) * fontSize : y, z);
+    nodePoint.set(x, y, z);
+    screenUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
+    towardCamera.copy(camera.position).sub(nodePoint).normalize();
+    const gap = radius + 3 - (sink ? (1 - lift.current) * fontSize : 0);
+    holder.position.copy(nodePoint).addScaledVector(screenUp, gap).addScaledVector(towardCamera, 8);
     holder.quaternion.copy(camera.quaternion);
     holder.scale.setScalar(sink ? 0.84 + 0.16 * lift.current : 1);
     holder.visible = presence > 0.02;
-  });
+  }, 1);
 
   return (
     <group ref={group}>
@@ -135,7 +148,8 @@ function GraphLabel({
         outlineWidth="7%"
         outlineOpacity={baseOpacity}
         material-depthWrite={false}
-        material-depthTest
+        material-depthTest={false}
+        renderOrder={10}
         material-side={DoubleSide}
         raycast={() => null}
       >

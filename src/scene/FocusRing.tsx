@@ -86,7 +86,7 @@ export function FocusRing({ catalog, frame }: { catalog: Catalog; frame: GraphFr
   });
 
   return (
-    <mesh ref={mesh} frustumCulled={false} renderOrder={4} visible={false}>
+    <mesh ref={mesh} frustumCulled={false} renderOrder={4} visible={false} raycast={() => null}>
       <planeGeometry args={[1, 1]} />
       <shaderMaterial
         ref={material}

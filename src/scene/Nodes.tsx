@@ -1,9 +1,10 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
-import { Color, Mesh, Vector2, type ShaderMaterial } from "three";
+import { Color, Mesh, Raycaster, Vector2, Vector3, type ShaderMaterial } from "three";
 import type { Catalog } from "../dictionary/catalog";
 import type { GraphFrame } from "../graph/project";
 import { NODE_ACCENT, NODE_INK } from "./palette";
+import { pickedSlug } from "./pointer";
 
 interface NodesProps {
   catalog: Catalog;
@@ -20,7 +21,7 @@ function circleRaycast(this: Mesh, raycaster: Parameters<Mesh["raycast"]>[0], in
   Mesh.prototype.raycast.call(this, raycaster, intersects);
   for (let i = intersects.length - 1; i >= start; i -= 1) {
     const uv = intersects[i].uv;
-    if (!uv || uv.distanceTo(discCenter) > 0.5) intersects.splice(i, 1);
+    if (uv && uv.distanceTo(discCenter) > 0.5) intersects.splice(i, 1);
   }
 }
 
@@ -68,7 +69,7 @@ const fragmentShader = `
 export function Nodes({ catalog, frame, paper, onFocus, onHover }: NodesProps) {
   const shown = useRef(Float32Array.from(frame.visible));
   const state = useRef(Float32Array.from(frame.nodeState));
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
   const fade = useMemo(
     () => ({
       uInk: { value: new Color(NODE_INK) },
@@ -85,6 +86,48 @@ export function Nodes({ catalog, frame, paper, onFocus, onHover }: NodesProps) {
   useEffect(() => {
     fade.uPaper.value.set(paper);
   }, [fade, paper]);
+
+  const frameRef = useRef(frame);
+  frameRef.current = frame;
+  const raycaster = useMemo(() => new Raycaster(), []);
+  const aim = useMemo(() => new Vector2(), []);
+  const center = useMemo(() => new Vector3(), []);
+
+  useEffect(() => {
+    const element = gl.domElement;
+    const pick = (event: PointerEvent) => {
+      const rect = element.getBoundingClientRect();
+      aim.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+      raycaster.setFromCamera(aim, camera);
+      const current = frameRef.current;
+      let slug: string | null = null;
+      let nearest = Infinity;
+      for (let index = 0; index < catalog.terms.length; index += 1) {
+        if (current.visible[index] < 0.5) continue;
+        center.set(current.positions[index * 3], current.positions[index * 3 + 1], current.positions[index * 3 + 2]);
+        if (raycaster.ray.distanceToPoint(center) > catalog.terms[index].radius * 1.3) continue;
+        const distance = center.distanceTo(camera.position);
+        if (distance < nearest) {
+          nearest = distance;
+          slug = catalog.terms[index].slug;
+        }
+      }
+      pickedSlug.current = slug;
+      onHover(slug);
+      document.documentElement.style.cursor = slug ? "pointer" : "";
+    };
+    const leave = () => {
+      pickedSlug.current = null;
+      onHover(null);
+      document.documentElement.style.cursor = "";
+    };
+    element.addEventListener("pointermove", pick);
+    element.addEventListener("pointerleave", leave);
+    return () => {
+      element.removeEventListener("pointermove", pick);
+      element.removeEventListener("pointerleave", leave);
+    };
+  }, [aim, camera, catalog, center, gl, onHover, raycaster]);
 
   useFrame(() => {
     const depth = camera.position.length();
@@ -105,7 +148,6 @@ export function Nodes({ catalog, frame, paper, onFocus, onHover }: NodesProps) {
           tone={state.current}
           fade={fade}
           onFocus={() => onFocus(term.slug)}
-          onHover={(over) => onHover(over ? term.slug : null)}
         />
       ))}
     </group>
@@ -120,7 +162,6 @@ function NodeMesh({
   tone,
   fade,
   onFocus,
-  onHover,
 }: {
   index: number;
   radius: number;
@@ -137,7 +178,6 @@ function NodeMesh({
     uFocalDepth: { value: number };
   };
   onFocus: () => void;
-  onHover: (over: boolean) => void;
 }) {
   const mesh = useRef<Mesh>(null);
   const material = useRef<ShaderMaterial>(null);
@@ -168,15 +208,6 @@ function NodeMesh({
       onClick={(event) => {
         event.stopPropagation();
         onFocus();
-      }}
-      onPointerOver={(event) => {
-        event.stopPropagation();
-        document.documentElement.style.cursor = "pointer";
-        onHover(true);
-      }}
-      onPointerOut={() => {
-        document.documentElement.style.cursor = "";
-        onHover(false);
       }}
     >
       <planeGeometry args={[radius * 2, radius * 2]} />
