@@ -278,11 +278,33 @@ button, input, a { font: inherit; color: inherit; }
 .panel-close:hover .panel-close-mark::before,
 .panel-close:hover .panel-close-mark::after { background: var(--ink); }
 
-.panel-body {
+.panel-scroll {
+  position: relative;
   flex: 1;
   min-height: 0;
+}
+
+.panel-body {
+  height: 100%;
   overflow: auto;
+  scrollbar-width: none;
   padding: clamp(2.4rem, 6vh, 4rem) clamp(1.8rem, 2.8vw, 3rem) 1.4rem;
+}
+
+.panel-body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.panel-thumb {
+  position: absolute;
+  top: 0;
+  right: 5px;
+  width: 3px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--ink) 32%, transparent);
+  cursor: grab;
+  touch-action: none;
 }
 
 .panel-meta {

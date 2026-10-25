@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import type { Term, TermPlace } from "../dictionary/catalog";
 import { definitionBody, parseInline, parseMarkdown, type Block, type Inline } from "../dictionary/prose";
 import { RollingLabel } from "./RollingLabel";
@@ -30,7 +30,7 @@ export function TermPanel({
       <button className="panel-close" type="button" aria-label="Close" onClick={onClose}>
         <span className="panel-close-mark" />
       </button>
-      <div className="panel-body">
+      <PanelScroll key={term.slug}>
         <header className="panel-meta">
           <span className="panel-section">{place.sectionTitle}</span>
           <span className="panel-index">
@@ -96,12 +96,73 @@ export function TermPanel({
             <CopyIcon />
           </button>
         </div>
-      </div>
+      </PanelScroll>
       <nav className="pager" aria-label="Adjacent terms">
         <PagerButton dir="prev" label="Prev" title={prevTitle} disabled={!place.prev} onClick={() => place.prev && onOpen(place.prev)} />
         <PagerButton dir="next" label="Next" title={nextTitle} disabled={!place.next} onClick={() => place.next && onOpen(place.next)} />
       </nav>
     </aside>
+  );
+}
+
+function PanelScroll({ children }: { children: ReactNode }) {
+  const scroller = useRef<HTMLDivElement>(null);
+  const [thumb, setThumb] = useState({ height: 0, top: 0, visible: false });
+
+  useEffect(() => {
+    const element = scroller.current;
+    if (!element) return;
+    const measure = () => {
+      const { scrollTop, scrollHeight, clientHeight } = element;
+      const visible = scrollHeight > clientHeight + 1;
+      const height = visible ? Math.max(36, (clientHeight / scrollHeight) * clientHeight) : 0;
+      const travel = Math.max(1, clientHeight - height);
+      const top = visible ? (scrollTop / (scrollHeight - clientHeight)) * travel : 0;
+      setThumb({ height, top, visible });
+    };
+    measure();
+    element.addEventListener("scroll", measure, { passive: true });
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    const content = element.firstElementChild;
+    if (content) observer.observe(content);
+    return () => {
+      element.removeEventListener("scroll", measure);
+      observer.disconnect();
+    };
+  }, []);
+
+  function drag(event: ReactPointerEvent<HTMLSpanElement>) {
+    const element = scroller.current;
+    if (!element) return;
+    const startY = event.clientY;
+    const startScroll = element.scrollTop;
+    const travel = Math.max(1, element.clientHeight - thumb.height);
+    const range = element.scrollHeight - element.clientHeight;
+    const move = (pointer: PointerEvent) => {
+      element.scrollTop = startScroll + ((pointer.clientY - startY) / travel) * range;
+    };
+    const stop = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", stop);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", stop);
+  }
+
+  return (
+    <div className="panel-scroll">
+      <div className="panel-body" ref={scroller}>
+        <div>{children}</div>
+      </div>
+      {thumb.visible ? (
+        <span
+          className="panel-thumb"
+          style={{ height: thumb.height, transform: `translateY(${thumb.top}px)` }}
+          onPointerDown={drag}
+        />
+      ) : null}
+    </div>
   );
 }
 
