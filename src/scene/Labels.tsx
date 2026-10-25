@@ -10,6 +10,7 @@ interface GraphText {
 }
 import type { Catalog } from "../dictionary/catalog";
 import type { GraphFrame } from "../graph/project";
+import { live } from "./live";
 import { pickedSlug } from "./pointer";
 
 const FONT = "/fonts/mono/JetBrainsMono-Medium.ttf";
@@ -101,9 +102,10 @@ function GraphLabel({
     blockRay(holder);
     holder.traverse(blockRay);
     const presence = frame.visible[index];
-    const x = frame.positions[index * 3];
-    const y = frame.positions[index * 3 + 1];
-    const z = frame.positions[index * 3 + 2];
+    const positions = live.positions.length === frame.positions.length ? live.positions : frame.positions;
+    const x = positions[index * 3];
+    const y = positions[index * 3 + 1];
+    const z = positions[index * 3 + 2];
     const focused = frame.focusIndex >= 0;
     const self = slug === frame.active;
     const hovering = focused && !self && pickedSlug.current === slug;

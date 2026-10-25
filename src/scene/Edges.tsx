@@ -4,6 +4,7 @@ import { BufferAttribute, BufferGeometry, Color, ShaderMaterial } from "three";
 import type { Catalog } from "../dictionary/catalog";
 import { sampleCurve } from "../graph/curve";
 import type { GraphFrame } from "../graph/project";
+import { live } from "./live";
 import { INK } from "./palette";
 
 const SEGMENTS = 16;
@@ -50,15 +51,16 @@ export function Edges({ catalog, frame }: EdgesProps) {
       const current = shown.current[edgeIndex];
       const next = current + (target - current) * (target > current ? 0.2 : 0.06);
       shown.current[edgeIndex] = next;
+      const positions = live.positions.length === frame.positions.length ? live.positions : frame.positions;
       const a: [number, number, number] = [
-        frame.positions[edge.source * 3],
-        frame.positions[edge.source * 3 + 1],
-        frame.positions[edge.source * 3 + 2],
+        positions[edge.source * 3],
+        positions[edge.source * 3 + 1],
+        positions[edge.source * 3 + 2],
       ];
       const b: [number, number, number] = [
-        frame.positions[edge.target * 3],
-        frame.positions[edge.target * 3 + 1],
-        frame.positions[edge.target * 3 + 2],
+        positions[edge.target * 3],
+        positions[edge.target * 3 + 1],
+        positions[edge.target * 3 + 2],
       ];
       for (let step = 0; step < SEGMENTS; step += 1) {
         const p0 = sampleCurve(a, b, edge.bend, frame.controlScale, step / SEGMENTS);

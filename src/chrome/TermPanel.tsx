@@ -35,7 +35,7 @@ export function TermPanel({
           <span className="panel-section">{place.sectionTitle}</span>
           <span className="panel-index">
             <em>{String(place.index).padStart(2, "0")}</em>
-            <span>/ {place.total}</span>
+            <span>/ {String(place.total).padStart(2, "0")}</span>
           </span>
         </header>
         <span className="rule" />

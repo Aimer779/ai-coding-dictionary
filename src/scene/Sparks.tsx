@@ -4,6 +4,11 @@ import { BufferAttribute, BufferGeometry } from "three";
 import type { Catalog } from "../dictionary/catalog";
 import { sampleCurve } from "../graph/curve";
 import type { GraphFrame } from "../graph/project";
+import { live } from "./live";
+
+function positionsOf(frame: GraphFrame) {
+  return live.positions.length === frame.positions.length ? live.positions : frame.positions;
+}
 
 const POOL = 320;
 const PER_EDGE = 8;
@@ -50,8 +55,8 @@ export function Sparks({ catalog, frame }: SparksProps) {
       if (spark.t >= 1) spark.t = 0;
       const edge = catalog.edges[spark.edge];
       const point = sampleCurve(
-        pointOf(frame.positions, edge.source),
-        pointOf(frame.positions, edge.target),
+        pointOf(positionsOf(frame), edge.source),
+        pointOf(positionsOf(frame), edge.target),
         edge.bend,
         frame.controlScale,
         spark.t,

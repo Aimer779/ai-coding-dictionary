@@ -4,6 +4,7 @@ import { Color, Mesh, Raycaster, Vector2, Vector3, type ShaderMaterial } from "t
 import type { Catalog } from "../dictionary/catalog";
 import type { GraphFrame } from "../graph/project";
 import { NODE_ACCENT, NODE_INK } from "./palette";
+import { live } from "./live";
 import { pickedSlug } from "./pointer";
 
 interface NodesProps {
@@ -104,7 +105,8 @@ export function Nodes({ catalog, frame, paper, onFocus, onHover }: NodesProps) {
       let nearest = Infinity;
       for (let index = 0; index < catalog.terms.length; index += 1) {
         if (current.visible[index] < 0.5) continue;
-        center.set(current.positions[index * 3], current.positions[index * 3 + 1], current.positions[index * 3 + 2]);
+        const positions = live.positions.length === current.positions.length ? live.positions : current.positions;
+        center.set(positions[index * 3], positions[index * 3 + 1], positions[index * 3 + 2]);
         if (raycaster.ray.distanceToPoint(center) > catalog.terms[index].radius * 1.3) continue;
         const distance = center.distanceTo(camera.position);
         if (distance < nearest) {
@@ -195,7 +197,8 @@ function NodeMesh({
     const eased = tone[index] + (nextState - tone[index]) * (1 - (nextState > tone[index] ? 0.16 : 0.012) ** delta);
     tone[index] = eased;
     if (material.current) material.current.uniforms.uState.value = eased;
-    node.position.set(frame.positions[index * 3], frame.positions[index * 3 + 1], frame.positions[index * 3 + 2]);
+    const positions = live.positions.length === frame.positions.length ? live.positions : frame.positions;
+    node.position.set(positions[index * 3], positions[index * 3 + 1], positions[index * 3 + 2]);
     const presence = shown[index];
     node.visible = presence > 0.05;
     node.scale.setScalar(Math.max(presence, 0.001));

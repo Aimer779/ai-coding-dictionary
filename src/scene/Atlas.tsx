@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { Vector3 } from "three";
 import type { Catalog } from "../dictionary/catalog";
 import type { GraphFrame } from "../graph/project";
+import { Drift } from "./Drift";
 import { Edges } from "./Edges";
 import { FocusRing } from "./FocusRing";
 import { useGrade } from "./Grade";
@@ -88,6 +89,7 @@ export function Atlas({ catalog, frame, shadow, highlight, framed, onFocus, onHo
         maxDistance={1200}
         dollyToCursor
       />
+      <Drift catalog={catalog} frame={frame} />
       <Edges catalog={catalog} frame={frame} />
       <Sparks catalog={catalog} frame={frame} />
       <Nodes catalog={catalog} frame={frame} paper={background} onFocus={onFocus} onHover={onHover} />

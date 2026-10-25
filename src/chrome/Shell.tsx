@@ -35,8 +35,8 @@ export function Shell({ catalog, session, frame, children }: ShellProps) {
   }, [session]);
 
   return (
-    <div className="app">
-      {children}
+    <div className="app" data-open={term ? "true" : "false"}>
+      <div className="stage">{children}</div>
       <SearchField query={state.query} count={frame.matched.length} onQuery={session.setQuery} />
       <div className="corner corner-info">
         <Tip content="About" side="bottom">

@@ -3,6 +3,7 @@ import { useMemo, useRef } from "react";
 import { Color, type Mesh, type ShaderMaterial } from "three";
 import type { Catalog } from "../dictionary/catalog";
 import type { GraphFrame } from "../graph/project";
+import { live } from "./live";
 import { NODE_ACCENT } from "./palette";
 
 const vertexShader = `
@@ -74,7 +75,8 @@ export function FocusRing({ catalog, frame }: { catalog: Catalog; frame: GraphFr
     if (active) arrived.current += (1 - arrived.current) * (1 - 0.0009 ** delta);
     const index = active ? catalog.indexOf(active) : -1;
     if (index >= 0) {
-      node.position.set(frame.positions[index * 3], frame.positions[index * 3 + 1], frame.positions[index * 3 + 2]);
+      const positions = live.positions.length === frame.positions.length ? live.positions : frame.positions;
+      node.position.set(positions[index * 3], positions[index * 3 + 1], positions[index * 3 + 2]);
     }
     const disc = radius.current;
     const gap = 1.1 * (0.5 + 0.35 * (1 - arrived.current));
