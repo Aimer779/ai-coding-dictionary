@@ -18,6 +18,10 @@
 
 [mattpocock/dictionary-of-ai-coding](https://github.com/mattpocock/dictionary-of-ai-coding) 没有 LICENSE。这里保留其词条正文，只作学习对照，不把这些正文当作可以再授权的内容。图谱交互和面板是这次实验自己实现的。
 
+## 在线预览
+
+https://aimer779.github.io/ai-coding-dictionary/
+
 ## 本地运行
 
 ```powershell

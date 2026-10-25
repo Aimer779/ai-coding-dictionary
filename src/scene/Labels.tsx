@@ -14,7 +14,7 @@ import { intro } from "../graph/intro";
 import { live } from "./live";
 import { pickedSlug } from "./pointer";
 
-const FONT = "/fonts/mono/JetBrainsMono-Medium.ttf";
+const FONT = `${import.meta.env.BASE_URL}fonts/mono/JetBrainsMono-Medium.ttf`;
 const INK = "#1a1a19";
 const ACCENT = "#0a0a0a";
 const PAPER = "#f2f2f0";
