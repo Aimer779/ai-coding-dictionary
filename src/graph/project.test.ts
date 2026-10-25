@@ -67,7 +67,7 @@ describe("graph frame", () => {
     const frame = paintGraph(catalog, layout, { focused: null, hovered: null });
     expect(layout.positions[3]).toBe(80);
     expect(frame.controlScale).toBe(1);
-    expect(frame.edgeBright[0]).toBeCloseTo(0.08);
+    expect(frame.edgeBright[0]).toBeCloseTo(0.015);
     expect(frame.idle).toBe(true);
   });
 

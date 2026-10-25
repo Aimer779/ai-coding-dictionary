@@ -81,7 +81,7 @@ function NodeMesh({
       onPointerOut={() => onHover(false)}
     >
       <sphereGeometry args={[base, 28, 20]} />
-      <meshStandardMaterial color={color} roughness={0.92} metalness={0} />
+      <meshStandardMaterial color={color} roughness={0.62} metalness={0.04} />
     </mesh>
   );
 }

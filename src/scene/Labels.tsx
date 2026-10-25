@@ -48,7 +48,7 @@ function LabelSprite({
       frame.positions[index * 3 + 1] + radius + 4.5,
       frame.positions[index * 3 + 2],
     );
-    const scale = 18 + radius;
+    const scale = (16 + radius) * 0.78;
     node.scale.set(scale * 4.2, scale * 0.55, 1);
   });
   return (
@@ -65,8 +65,8 @@ function labelTexture(title: string) {
   const context = canvas.getContext("2d");
   if (!context) return new CanvasTexture(canvas);
   context.clearRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = "#5f5e5a";
-  context.font = '600 28px "Courier New", ui-monospace, monospace';
+  context.fillStyle = "#6f6e6a";
+  context.font = '600 26px ui-monospace, "Courier New", monospace';
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.fillText(title.toUpperCase(), 256, 34);

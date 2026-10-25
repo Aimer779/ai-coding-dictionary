@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import { Tip } from "./Tip";
 
 interface SearchFieldProps {
   query: string;
@@ -7,56 +8,52 @@ interface SearchFieldProps {
 }
 
 export function SearchField({ query, count, onQuery }: SearchFieldProps) {
-  const [open, setOpen] = useState(query.length > 0);
+  const root = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (open) input.current?.focus();
-  }, [open]);
+    function onPointerDown(event: PointerEvent) {
+      if (!root.current?.contains(event.target as Node)) input.current?.blur();
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, []);
 
   return (
-    <div className={open ? "search is-open" : "search"}>
-      <button className="icon-button" type="button" aria-label="Search the dictionary" onClick={() => setOpen(true)}>
-        <SearchIcon />
-      </button>
-      {open ? (
+    <div className="search-root" ref={root}>
+      <div className="search">
+        <Tip content="Search" side="bottom">
+          <button
+            className="search-icon"
+            type="button"
+            aria-label="Search the dictionary"
+            onClick={() => input.current?.focus()}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.34-4.34" />
+            </svg>
+          </button>
+        </Tip>
         <input
           ref={input}
           value={query}
           aria-label="Search the dictionary"
           placeholder="Search the dictionary"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          enterKeyHint="search"
           onChange={(event) => onQuery(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              onQuery("");
-              setOpen(false);
-            }
+            if (event.key !== "Escape") return;
+            if (query.trim()) onQuery("");
+            else input.current?.blur();
           }}
         />
-      ) : null}
-      {open ? (
-        <button
-          className="search-clear"
-          type="button"
-          aria-label="Clear search"
-          onClick={() => {
-            onQuery("");
-            setOpen(false);
-          }}
-        >
-          ×
-        </button>
-      ) : null}
-      {open && query ? <p className="search-count">{count} TERMS</p> : null}
+      </div>
+      {query ? <p className="search-count">{count} TERMS</p> : null}
     </div>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="11" cy="11" r="6.5" />
-      <path d="M16 16.5L20 20.5" />
-    </svg>
   );
 }

@@ -28,7 +28,7 @@ export interface GraphFrame {
   matched: string[];
 }
 
-const REST_BRIGHT = 0.08;
+const REST_BRIGHT = 0.015;
 const LINKED_BRIGHT = 0.6;
 const GHOST_BRIGHT = 0.022;
 const SEARCH_BRIGHT = 0.28;

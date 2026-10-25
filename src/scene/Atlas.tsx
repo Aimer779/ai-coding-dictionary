@@ -57,8 +57,9 @@ export function Atlas({ catalog, frame, tint, onFocus, onHover }: AtlasProps) {
     <>
       <color attach="background" args={[background]} />
       <fog attach="fog" args={[background, 680, 2300]} />
-      <hemisphereLight args={["#f7f6f2", "#2a2926", 1.15]} />
-      <directionalLight position={[80, 140, 90]} intensity={1.35} />
+      <hemisphereLight args={["#f4f3ef", "#b9b6ae", 0.85]} />
+      <directionalLight position={[120, 180, 80]} intensity={1.7} />
+      <directionalLight position={[-90, -40, -30]} intensity={0.35} />
       <CameraControls
         ref={controls}
         makeDefault

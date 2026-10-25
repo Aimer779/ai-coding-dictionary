@@ -5,6 +5,7 @@ import type { Session } from "../session/store";
 import { useSessionState } from "../session/store";
 import { SearchField } from "./SearchField";
 import { TermPanel } from "./TermPanel";
+import { Tip } from "./Tip";
 
 interface ShellProps {
   catalog: Catalog;
@@ -15,7 +16,7 @@ interface ShellProps {
 
 export function Shell({ catalog, session, frame, children }: ShellProps) {
   const state = useSessionState(session);
-  const [intro, setIntro] = useState(true);
+  const [intro, setIntro] = useState(state.query.length === 0 && !state.focused);
   const [about, setAbout] = useState(false);
   const term = state.focused ? catalog.term(state.focused) : undefined;
   const place = state.focused ? catalog.place(state.focused) : undefined;
@@ -38,15 +39,17 @@ export function Shell({ catalog, session, frame, children }: ShellProps) {
       {children}
       <SearchField query={state.query} count={frame.matched.length} onQuery={session.setQuery} />
       <div className="corner corner-info">
-        <button
-          className="icon-button"
-          type="button"
-          aria-label="About this project"
-          aria-expanded={about}
-          onClick={() => setAbout((open) => !open)}
-        >
-          i
-        </button>
+        <Tip content="About" side="bottom">
+          <button
+            className="icon-button"
+            type="button"
+            aria-label="About this project"
+            aria-expanded={about}
+            onClick={() => setAbout((open) => !open)}
+          >
+            i
+          </button>
+        </Tip>
         {about ? (
           <div className="about" role="dialog" aria-label="About">
             <p>Matt Pocock’s AI Coding Dictionary. Plain-language terms for agentic coding, wired into a graph.</p>
@@ -57,27 +60,31 @@ export function Shell({ catalog, session, frame, children }: ShellProps) {
         ) : null}
       </div>
       <a className="credit" href="https://www.aihero.dev/s/dictionary">
-        AIHero.dev
+        <span className="credit-ai">AI</span>Hero.dev
       </a>
       <div className="corner corner-tools">
-        <button
-          className="icon-button"
-          type="button"
-          aria-label={state.sectionColor ? "Use ink and paper" : "Switch to section colors"}
-          aria-pressed={state.sectionColor}
-          onClick={session.toggleSectionColor}
-        >
-          <PaletteIcon />
-        </button>
-        <button
-          className="icon-button"
-          type="button"
-          aria-label={state.sound ? "Mute interface sounds" : "Unmute interface sounds"}
-          aria-pressed={!state.sound}
-          onClick={session.toggleSound}
-        >
-          {state.sound ? "♪" : "×"}
-        </button>
+        <Tip content={state.sectionColor ? "Colors off" : "Colors on"}>
+          <button
+            className="icon-button"
+            type="button"
+            aria-label={state.sectionColor ? "Switch to grayscale" : "Switch to section colors"}
+            aria-pressed={state.sectionColor}
+            onClick={session.toggleSectionColor}
+          >
+            <PaletteIcon />
+          </button>
+        </Tip>
+        <Tip content={state.sound ? "Mute" : "Unmute"}>
+          <button
+            className="icon-button"
+            type="button"
+            aria-label={state.sound ? "Mute interface sounds" : "Unmute interface sounds"}
+            aria-pressed={!state.sound}
+            onClick={session.toggleSound}
+          >
+            {state.sound ? "♪" : "×"}
+          </button>
+        </Tip>
       </div>
       {term && place ? (
         <TermPanel
