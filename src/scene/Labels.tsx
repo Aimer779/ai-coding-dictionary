@@ -38,21 +38,27 @@ function LabelSprite({
   texture: CanvasTexture;
 }) {
   const sprite = useRef<Sprite>(null);
-  useFrame(() => {
+  const sink = useRef(0);
+  useFrame((_, delta) => {
     const node = sprite.current;
     if (!node) return;
     const visible = frame.visible[index];
+    const unrelated = frame.focusIndex >= 0 && frame.nodeState[index] <= 0.05;
+    const target = unrelated ? 1 : 0;
+    sink.current += (target - sink.current) * (1 - (target > sink.current ? 0.16 : 0.012) ** delta);
     node.visible = visible > 0.45;
     node.position.set(
       frame.positions[index * 3],
-      frame.positions[index * 3 + 1] + radius + 4.5,
+      frame.positions[index * 3 + 1] + radius + 4.5 - sink.current * (radius + 8),
       frame.positions[index * 3 + 2],
     );
-    const scale = (16 + radius) * 0.78;
+    const scale = (16 + radius) * 0.78 * (1 - sink.current * 0.16);
     node.scale.set(scale * 4.2, scale * 0.55, 1);
+    const material = node.material;
+    if (!Array.isArray(material)) material.opacity = 1 - sink.current * 0.95;
   });
   return (
-    <sprite ref={sprite} renderOrder={2}>
+    <sprite ref={sprite} renderOrder={2} raycast={() => null}>
       <spriteMaterial map={texture} transparent depthWrite={false} />
     </sprite>
   );

@@ -1,21 +1,84 @@
-import { useFrame } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
-import type { Mesh } from "three";
+import { useFrame, useThree } from "@react-three/fiber";
+import { useEffect, useMemo, useRef } from "react";
+import { Color, type Mesh, type ShaderMaterial } from "three";
 import type { Catalog } from "../dictionary/catalog";
 import type { GraphFrame } from "../graph/project";
-import { NODE, PAPER } from "./palette";
 
 interface NodesProps {
   catalog: Catalog;
   frame: GraphFrame;
-  tint: string | null;
+  paper: string;
   onFocus: (slug: string) => void;
   onHover: (slug: string | null) => void;
 }
 
-export function Nodes({ catalog, frame, tint, onFocus, onHover }: NodesProps) {
+const INK = "#1a1a19";
+const ACCENT = "#0a0a0a";
+
+const vertexShader = `
+  varying float vDepth;
+  void main() {
+    vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+    vDepth = -viewPosition.z;
+    gl_Position = projectionMatrix * viewPosition;
+  }
+`;
+
+const fragmentShader = `
+  precision highp float;
+  uniform vec3 uInk;
+  uniform vec3 uAccent;
+  uniform vec3 uPaper;
+  uniform float uState;
+  uniform float uFadeNear;
+  uniform float uFadeFar;
+  uniform float uFadeStrength;
+  uniform float uFocalDepth;
+  varying float vDepth;
+
+  void main() {
+    vec3 col = uInk;
+    float hot = clamp(uState - 1.0, 0.0, 1.0);
+    col = mix(col, uAccent, hot);
+
+    float sep = clamp((vDepth - (uFocalDepth - 160.0)) / 200.0, 0.0, 1.0);
+    col = mix(col, uPaper, sep * 0.220);
+
+    float depthFade = 1.0 - smoothstep(uFadeNear, uFadeFar, vDepth) * uFadeStrength;
+    float dim = clamp(uState, 0.0, 1.0);
+    float fade = depthFade * mix(0.2, 1.0, dim);
+    col = mix(uPaper, col, fade);
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
+
+export function Nodes({ catalog, frame, paper, onFocus, onHover }: NodesProps) {
   const shown = useRef(Float32Array.from(frame.visible));
-  const color = tint ? PAPER : NODE;
+  const state = useRef(Float32Array.from(frame.nodeState));
+  const { camera } = useThree();
+  const fade = useMemo(
+    () => ({
+      uInk: { value: new Color(INK) },
+      uAccent: { value: new Color(ACCENT) },
+      uPaper: { value: new Color(paper) },
+      uFadeNear: { value: 300 },
+      uFadeFar: { value: 560 },
+      uFadeStrength: { value: 0.82 },
+      uFocalDepth: { value: 600 },
+    }),
+    [],
+  );
+
+  useEffect(() => {
+    fade.uPaper.value.set(paper);
+  }, [fade, paper]);
+
+  useFrame(() => {
+    const depth = camera.position.length();
+    fade.uFadeNear.value = depth - 35;
+    fade.uFadeFar.value = depth + 200;
+    fade.uFocalDepth.value = depth;
+  });
 
   return (
     <group>
@@ -26,7 +89,8 @@ export function Nodes({ catalog, frame, tint, onFocus, onHover }: NodesProps) {
           radius={term.radius}
           frame={frame}
           shown={shown.current}
-          color={color}
+          tone={state.current}
+          fade={fade}
           onFocus={() => onFocus(term.slug)}
           onHover={(over) => onHover(over ? term.slug : null)}
         />
@@ -40,7 +104,8 @@ function NodeMesh({
   radius,
   frame,
   shown,
-  color,
+  tone,
+  fade,
   onFocus,
   onHover,
 }: {
@@ -48,19 +113,33 @@ function NodeMesh({
   radius: number;
   frame: GraphFrame;
   shown: Float32Array;
-  color: string;
+  tone: Float32Array;
+  fade: {
+    uInk: { value: Color };
+    uAccent: { value: Color };
+    uPaper: { value: Color };
+    uFadeNear: { value: number };
+    uFadeFar: { value: number };
+    uFadeStrength: { value: number };
+    uFocalDepth: { value: number };
+  };
   onFocus: () => void;
   onHover: (over: boolean) => void;
 }) {
   const mesh = useRef<Mesh>(null);
-  const base = useMemo(() => radius, [radius]);
+  const material = useRef<ShaderMaterial>(null);
+  const uniforms = useMemo(() => ({ ...fade, uState: { value: 1 } }), [fade]);
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const node = mesh.current;
     if (!node) return;
     const target = frame.visible[index];
     const current = shown[index];
     shown[index] = current + (target - current) * (target > current ? 0.22 : 0.08);
+    const nextState = frame.nodeState[index];
+    const eased = tone[index] + (nextState - tone[index]) * (1 - (nextState > tone[index] ? 0.16 : 0.012) ** delta);
+    tone[index] = eased;
+    if (material.current) material.current.uniforms.uState.value = eased;
     node.position.set(frame.positions[index * 3], frame.positions[index * 3 + 1], frame.positions[index * 3 + 2]);
     const presence = shown[index];
     node.visible = presence > 0.05;
@@ -76,12 +155,16 @@ function NodeMesh({
       }}
       onPointerOver={(event) => {
         event.stopPropagation();
+        document.documentElement.style.cursor = "pointer";
         onHover(true);
       }}
-      onPointerOut={() => onHover(false)}
+      onPointerOut={() => {
+        document.documentElement.style.cursor = "";
+        onHover(false);
+      }}
     >
-      <sphereGeometry args={[base, 28, 20]} />
-      <meshStandardMaterial color={color} roughness={0.62} metalness={0.04} />
+      <sphereGeometry args={[radius, 28, 20]} />
+      <shaderMaterial ref={material} uniforms={uniforms} vertexShader={vertexShader} fragmentShader={fragmentShader} />
     </mesh>
   );
 }

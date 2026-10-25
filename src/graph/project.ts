@@ -20,11 +20,13 @@ export interface GraphFrame {
   positions: Float32Array;
   visible: Float32Array;
   edgeBright: Float32Array;
+  nodeState: Float32Array;
   controlScale: number;
   lookAt: Vec3;
   distance: number;
   idle: boolean;
   active: string | null;
+  focusIndex: number;
   matched: string[];
 }
 
@@ -32,6 +34,11 @@ const REST_BRIGHT = 0.015;
 const LINKED_BRIGHT = 0.6;
 const GHOST_BRIGHT = 0.022;
 const SEARCH_BRIGHT = 0.28;
+const REST_STATE = 1;
+const ACTIVE_STATE = 2;
+const LINKED_STATE = 1.3;
+const FOCUS_OTHER_STATE = 0.035;
+const HOVER_OTHER_STATE = 0.12;
 const OVERVIEW_DISTANCE = 760;
 const FOCUS_DISTANCE = (radius: number, fromOrigin: number) => {
   const base = Math.min(1100, 230 + 9 * radius);
@@ -140,16 +147,31 @@ export function paintGraph(catalog: Catalog, layout: GraphLayout, focus: GraphFo
     }
   }
 
+  const nodeState = new Float32Array(catalog.terms.length);
+  nodeState.fill(REST_STATE);
+  if (activeIndex >= 0) {
+    const linked = new Set(catalog.neighbors(active as string));
+    const other = focus.focused ? FOCUS_OTHER_STATE : HOVER_OTHER_STATE;
+    for (let i = 0; i < catalog.terms.length; i += 1) {
+      const slug = catalog.terms[i].slug;
+      if (i === activeIndex) nodeState[i] = ACTIVE_STATE;
+      else if (linked.has(slug)) nodeState[i] = LINKED_STATE;
+      else nodeState[i] = other;
+    }
+  }
+
   const camera = cameraFor(catalog, layout, focus.focused);
   return {
     positions: layout.positions,
     visible: layout.visible,
     edgeBright,
+    nodeState,
     controlScale: layout.controlScale,
     lookAt: camera.lookAt,
     distance: camera.distance,
     idle: !searching && !focus.focused && !focus.hovered,
     active,
+    focusIndex: focus.focused ? activeIndex : -1,
     matched: layout.matched,
   };
 }

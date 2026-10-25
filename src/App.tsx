@@ -37,6 +37,7 @@ export function App() {
           catalog={catalog}
           frame={frame}
           tint={tint}
+          framed={Boolean(state.focused)}
           onFocus={session.setFocused}
           onHover={session.setHovered}
         />

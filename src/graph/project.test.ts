@@ -77,6 +77,20 @@ describe("graph frame", () => {
     expect(frame.edgeBright[0]).toBeCloseTo(0.6);
     expect(frame.lookAt).toEqual([0, 0, 0]);
     expect(frame.idle).toBe(false);
+    expect(frame.focusIndex).toBe(0);
+    expect(frame.nodeState[0]).toBe(2);
+    expect(frame.nodeState[1]).toBeCloseTo(1.3);
+    expect(frame.nodeState[2]).toBeCloseTo(0.035);
+  });
+
+  it("keeps every sphere at rest weight until something is active", () => {
+    const layout = layoutGraph(catalog, "");
+    const rest = paintGraph(catalog, layout, { focused: null, hovered: null });
+    expect(Array.from(rest.nodeState)).toEqual([1, 1, 1]);
+    const hovered = paintGraph(catalog, layout, { focused: null, hovered: "alpha" });
+    expect(hovered.focusIndex).toBe(-1);
+    expect(hovered.nodeState[0]).toBe(2);
+    expect(hovered.nodeState[2]).toBeCloseTo(0.12);
   });
 
   it("moves a single search hit to the origin and straightens links", () => {

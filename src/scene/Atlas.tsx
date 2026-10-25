@@ -1,6 +1,7 @@
 import { CameraControls } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
+import { Vector3, type PerspectiveCamera } from "three";
 import type { Catalog } from "../dictionary/catalog";
 import type { GraphFrame } from "../graph/project";
 import { Edges } from "./Edges";
@@ -13,12 +14,22 @@ interface AtlasProps {
   catalog: Catalog;
   frame: GraphFrame;
   tint: string | null;
+  framed: boolean;
   onFocus: (slug: string) => void;
   onHover: (slug: string | null) => void;
 }
 
-export function Atlas({ catalog, frame, tint, onFocus, onHover }: AtlasProps) {
+const EYE = new Vector3(0.42, 0.22, 0.78);
+const UP = new Vector3(0, 1, 0);
+const nodePoint = new Vector3();
+const eyePoint = new Vector3();
+const viewPoint = new Vector3();
+const rightPoint = new Vector3();
+const targetPoint = new Vector3();
+
+export function Atlas({ catalog, frame, tint, framed, onFocus, onHover }: AtlasProps) {
   const controls = useRef<CameraControls>(null);
+  const { size, camera } = useThree();
   const placed = useRef("");
   const dragging = useRef(false);
   const background = tint ?? PAPER;
@@ -41,16 +52,26 @@ export function Atlas({ catalog, frame, tint, onFocus, onHover }: AtlasProps) {
   }, []);
 
   useFrame((_, delta) => {
-    const camera = controls.current;
-    if (!camera) return;
-    const key = `${frame.lookAt[0].toFixed(2)}:${frame.lookAt[1].toFixed(2)}:${frame.lookAt[2].toFixed(2)}:${frame.distance.toFixed(1)}`;
+    const rig = controls.current;
+    if (!rig) return;
+    const key = `${frame.lookAt[0].toFixed(2)}:${frame.lookAt[1].toFixed(2)}:${frame.lookAt[2].toFixed(2)}:${frame.distance.toFixed(1)}:${framed ? size.width : 0}`;
     if (key !== placed.current) {
       placed.current = key;
       const [x, y, z] = frame.lookAt;
       const distance = frame.distance;
-      void camera.setLookAt(x + distance * 0.42, y + distance * 0.22, z + distance * 0.78, x, y, z, true);
+      nodePoint.set(x, y, z);
+      eyePoint.copy(EYE).normalize().multiplyScalar(distance).add(nodePoint);
+      targetPoint.copy(nodePoint);
+      if (framed && size.width >= 800) {
+        viewPoint.copy(nodePoint).sub(eyePoint).normalize();
+        rightPoint.crossVectors(viewPoint, UP).normalize();
+        const fov = (camera as PerspectiveCamera).fov;
+        const halfWidth = distance * Math.tan((fov * Math.PI) / 360) * (size.width / size.height);
+        targetPoint.add(rightPoint.multiplyScalar(halfWidth / 3));
+      }
+      void rig.setLookAt(eyePoint.x, eyePoint.y, eyePoint.z, targetPoint.x, targetPoint.y, targetPoint.z, true);
     }
-    if (frame.idle && !dragging.current) camera.rotate(0.04 * delta, 0, true);
+    if (frame.idle && !dragging.current) rig.rotate(0.04 * delta, 0, true);
   });
 
   return (
@@ -63,14 +84,14 @@ export function Atlas({ catalog, frame, tint, onFocus, onHover }: AtlasProps) {
       <CameraControls
         ref={controls}
         makeDefault
-        smoothTime={0.45}
+        smoothTime={0.55}
         minDistance={70}
         maxDistance={1200}
         dollyToCursor
       />
       <Edges catalog={catalog} frame={frame} />
       <Sparks catalog={catalog} frame={frame} />
-      <Nodes catalog={catalog} frame={frame} tint={tint} onFocus={onFocus} onHover={onHover} />
+      <Nodes catalog={catalog} frame={frame} paper={background} onFocus={onFocus} onHover={onHover} />
       <Labels catalog={catalog} frame={frame} />
     </>
   );
